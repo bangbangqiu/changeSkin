@@ -9,7 +9,9 @@ import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.RelativeLayout;
 
 import java.io.File;
@@ -24,6 +26,9 @@ import dalvik.system.DexClassLoader;
  * 1：写两套style切换，或者在代码中实现
  * 2：通过加载apk文件，即插件化换肤
  * 第一种较为简单 写第二种
+ * <p>
+ * 思路：1：通过反射assetManager.addAssetPath方法加载插件apk
+ * 2：通过反射DexClassLoader去加载类.R$drawable
  */
 public class MainActivity extends AppCompatActivity {
 
@@ -32,12 +37,14 @@ public class MainActivity extends AppCompatActivity {
     private Resources resources;
     private String pluginPackageName = "com.skin.skin_plugin";
     private RelativeLayout rlMain;
+    private Button btn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         rlMain = (RelativeLayout) findViewById(R.id.activity_main);
+        btn = (Button) findViewById(R.id.btn);
         Class asset = AssetManager.class;
         try {
             assetManager = (AssetManager) asset.newInstance();
@@ -71,12 +78,29 @@ public class MainActivity extends AppCompatActivity {
             Class<?> c = dexClassLoader.loadClass(pluginPackageName + ".R$drawable");
             Field[] fields = c.getDeclaredFields();
             for (Field field : fields) {
+                Log.d("tag", "field : " + field.getName());
                 if (field.getName().equals("activity_bg_a")) {
                     int imgId = field.getInt(R.drawable.class);
                     Drawable drawable = resources.getDrawable(imgId);
                     rlMain.setBackgroundDrawable(drawable);
                 }
             }
+
+            Class<?> cTemp = dexClassLoader.loadClass(pluginPackageName + ".R$color");
+            Field[] fieldTemp = cTemp.getDeclaredFields();
+            for (Field field : fieldTemp) {
+                Log.d("tag", "field Key : " + field.getName());
+                Log.d("tag", "field Addr : " + field.getInt(R.drawable.class));
+                Log.d("tag", "field Value : " + Integer.toHexString(resources.getColor(field.getInt(R.drawable.class))));
+                if(field.getName().equals("btn_bg2")){
+                    btn.setBackgroundColor(resources.getColor(field.getInt(R.drawable.class)));
+                }
+                if(field.getName().equals("btn_text_bg2")){
+                    btn.setTextColor(resources.getColor(field.getInt(R.drawable.class)));
+                }
+
+            }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
